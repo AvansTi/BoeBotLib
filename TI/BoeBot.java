@@ -74,7 +74,7 @@ public class BoeBot
     * @param pin the BoeBot pin number
     * @param value the state to wait for. true to wait for a high pulse, false to wait for a low pulse
     * @param timeout the timeout to wait for, in microseconds
-    * @return Returns the length of the measured pulse, -1 if there was a timeout, and 0 if there was a timeout during the pulse
+    * @return Returns the length of the measured pulse, -1 if there was a timeout, and 0 if there was a timeout during the pulse, -2 if measurement is started during the pulse
     */
     public static int pulseIn(int pin, boolean value, int timeout)
     {
