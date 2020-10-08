@@ -13,6 +13,7 @@ public class Servo {
      */
     public Servo(int pin)
     {
+	BoeBot.modeMap[pin] = PinMode.PWM;
         this.pin = BoeBot.pinMap[pin];
         this.pulseWidth = 1500;
         PiGpio.servo(this.pin, pulseWidth);

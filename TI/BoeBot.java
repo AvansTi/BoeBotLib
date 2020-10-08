@@ -1,5 +1,6 @@
 package TI;
 import java.awt.Color;
+import java.util.*;
 
 
 /**
@@ -10,7 +11,22 @@ public class BoeBot
 {  
     /** Mapping of BoeBot Pin number to Raspberry Pi Pin number */
     static int[] pinMap = { 17, 27, 22, 5, 6, 13, 19, 26, 18, 23, 24, 25, 12, 16, 20, 21};
-    
+    static PinMode[] modeMap = new PinMode[16];
+
+
+    static {
+	Arrays.fill(modeMap, PinMode.Unused);
+    }
+
+
+
+
+    public static void setMode(int pin, PinMode mode)
+    {
+	modeMap[pin] = mode;
+	PiGpio.setMode(pinMap[pin], mode.getValue());
+    }
+
     
     /**
      * Will put a pin in output mode, and set the state high if value is true, and low if value is false
@@ -20,6 +36,8 @@ public class BoeBot
      */
     public static void digitalWrite(int pin, boolean value)
     {
+	if(modeMap[pin] != PinMode.Output)
+	    throw new PinException("Trying to write to pin " + pin + " but pin is not set to output");
         PiGpio.write(pinMap[pin], value);
     }
 
@@ -30,6 +48,8 @@ public class BoeBot
      */
     public static boolean digitalRead(int pin)
     {
+	if(modeMap[pin] != PinMode.Input)
+	    throw new PinException("Trying to write to pin " + pin + " but pin is not set to input");
         return PiGpio.read(pinMap[pin]) == PiGpio.PI_HIGH;
     }
 
@@ -78,6 +98,8 @@ public class BoeBot
     */
     public static int pulseIn(int pin, boolean value, int timeout)
     {
+	if(modeMap[pin] != PinMode.Input)
+	    throw new PinException("Trying to write to pin " + pin + " but pin is not set to input");
         return PiGpio.pulseIn(pinMap[pin], value, timeout);
     }
     
@@ -109,6 +131,8 @@ public class BoeBot
      */
     public static void freqOut(int pin, int frequency, int time)
     {
+	if(modeMap[pin] != PinMode.Output)
+	    throw new PinException("Trying to write to pin " + pin + " but pin is not set to output");
         if(frequency < 0 || time < 0)
             return;
 
@@ -130,6 +154,8 @@ public class BoeBot
      */
     public static void freqOut(int pin, float frequency, int time)
     {
+	if(modeMap[pin] != PinMode.Output)
+	    throw new PinException("Trying to write to pin " + pin + " but pin is not set to output");
         if(frequency < 0 || time < 0)
             return;
         PiGpio.freqOut(pinMap[pin], frequency, time);

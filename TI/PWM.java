@@ -15,6 +15,7 @@ public class PWM
      */
     public PWM(int pin, int dutycycle)
     {
+	BoeBot.modeMap[pin] = PinMode.PWM;
         this.pin = BoeBot.pinMap[pin];
         this.dutycycle = dutycycle;
         PiGpio.pwm(this.pin, this.dutycycle);
