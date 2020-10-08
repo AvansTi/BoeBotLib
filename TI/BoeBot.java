@@ -1,6 +1,9 @@
 package TI;
 import java.awt.Color;
 import java.util.*;
+import java.nio.*;
+import java.io.*;
+import java.nio.file.*;
 
 
 /**
@@ -12,45 +15,87 @@ public class BoeBot
     /** Mapping of BoeBot Pin number to Raspberry Pi Pin number */
     static int[] pinMap = { 17, 27, 22, 5, 6, 13, 19, 26, 18, 23, 24, 25, 12, 16, 20, 21};
     static PinMode[] modeMap = new PinMode[16];
+    private static final String dataStoreFile = "/home/pi/upload/datastore.bin";
+    static int[] dataStore;
 
 
-    static {
-	Arrays.fill(modeMap, PinMode.Unused);
-    }
+	static {
+		Arrays.fill(modeMap, PinMode.Unused);
+		try
+		{
+			byte[] data = Files.readAllBytes(Paths.get(dataStoreFile));
+			dataStore = new int[data.length / 4];
+			ByteBuffer buffer = ByteBuffer.wrap(data);
+			for(int i = 0; i < dataStore.length; i++)
+				dataStore[i] = buffer.getInt();
+		
+		} catch(IOException e)
+		{
+			System.out.println("Data store file not found, resetting");
+			dataStore = new int[1024];
+			saveDataStore();
+		}
+	}
+	
+	private static void saveDataStore()
+	{
+		byte[] data = new byte[dataStore.length*4];
+		ByteBuffer buffer = ByteBuffer.wrap(data);
+		for(int d : dataStore)
+			buffer.putInt(d);
+		try {
+			Files.write(Paths.get(dataStoreFile), data);
+		} catch(IOException e)
+		{
+			System.out.println("Error storing data store.");
+		}
+	}
 
 
-
-
-    public static void setMode(int pin, PinMode mode)
-    {
-	modeMap[pin] = mode;
-	PiGpio.setMode(pinMap[pin], mode.getValue());
-    }
+    /**
+    * Sets the pin to a specific mode; input or output.
+    * @param pin the BoeBot pin number
+    * @param mode the mode to set the pin to
+    */
+	public static void setMode(int pin, PinMode mode)
+	{
+	if(mode != PinMode.Output && mode != PinMode.Input)
+	    throw new PinException("setMode should only be used to set the pinmode to PinMode.Input or Pinmode.Output");
+	if(pin < 0 || pin > 16)
+	    throw new PinException("Pin value out of range");
+		modeMap[pin] = mode;
+		PiGpio.setMode(pinMap[pin], mode.getValue());
+	}
 
     
     /**
-     * Will put a pin in output mode, and set the state high if value is true, and low if value is false
-     * If this pin is in input mode, will switch to output mode
+     * Will set the state high if value is true, and low if value is false
+     * The pin has to be in output mode
      * @param pin the BoeBot pin number
      * @param value the value to write to this pin. true will set the pin high, low will set the pin low
      */
-    public static void digitalWrite(int pin, boolean value)
-    {
-	if(modeMap[pin] != PinMode.Output)
-	    throw new PinException("Trying to write to pin " + pin + " but pin is not set to output");
-        PiGpio.write(pinMap[pin], value);
+	public static void digitalWrite(int pin, boolean value)
+	{
+		if(modeMap[pin] != PinMode.Output)
+			throw new PinException("Trying to write to pin " + pin + " but pin is not set to output");
+		if(pin < 0 || pin > 16)
+			throw new PinException("Pin value out of range");
+		PiGpio.write(pinMap[pin], value);
     }
 
     /**
      * Read the state of a pin. If the pin is high, will return true, otherwise will return false
+     * The pin has to be in input mode
      * @param pin the BoeBot pin number
      * @return the state of the pin, true for high, false for low
      */
     public static boolean digitalRead(int pin)
     {
-	if(modeMap[pin] != PinMode.Input)
-	    throw new PinException("Trying to write to pin " + pin + " but pin is not set to input");
-        return PiGpio.read(pinMap[pin]) == PiGpio.PI_HIGH;
+		if(modeMap[pin] != PinMode.Input)
+			throw new PinException("Trying to write to pin " + pin + " but pin is not set to input");
+		if(pin < 0 || pin > 16)
+			throw new PinException("Pin value out of range");
+		return PiGpio.read(pinMap[pin]) == PiGpio.PI_HIGH;
     }
 
     /**
@@ -90,7 +135,7 @@ public class BoeBot
     }
     
    /**
-    * Waits for a pulse on a pin
+    * Waits for a pulse on a pin. The pin has to be in input mode
     * @param pin the BoeBot pin number
     * @param value the state to wait for. true to wait for a high pulse, false to wait for a low pulse
     * @param timeout the timeout to wait for, in microseconds
@@ -100,31 +145,35 @@ public class BoeBot
     {
 	if(modeMap[pin] != PinMode.Input)
 	    throw new PinException("Trying to write to pin " + pin + " but pin is not set to input");
+	if(pin < 0 || pin > 16)
+	    throw new PinException("Pin value out of range");
         return PiGpio.pulseIn(pinMap[pin], value, timeout);
     }
     
 
     /**
      * Stores data on the internal memory of the Raspberry Pi
-     * @param slot the dataslot to store information on
+     * @param slot the dataslot to store information on (0-1024)
      * @param value the value to store
      */
     public static void dataStore(int slot, int value)
     {
+    	dataStore[slot] = value;
+	    saveDataStore();
     }
 
     /**
      * Reads data from the internal memory of the Raspberry Pi
-     * @param slot the dataslot to store information on
+     * @param slot the dataslot to store information on (0-1024)
      * @return the information in memory
      */
     public static int dataRead(int slot)
     {
-        return 0;
+        return dataStore[slot];
     }
     
     /**
-     * Writes a frequency to a pin, for a certain amount of time
+     * Writes a frequency to a pin, for a certain amount of time. The pin has to be in input mode
      * @param pin the BoeBot pin number
      * @param frequency the frequency to write, in Hz
      * @param time the amount of time to write, in milliseconds
@@ -133,6 +182,8 @@ public class BoeBot
     {
 	if(modeMap[pin] != PinMode.Output)
 	    throw new PinException("Trying to write to pin " + pin + " but pin is not set to output");
+	if(pin < 0 || pin > 16)
+	    throw new PinException("Pin value out of range");
         if(frequency < 0 || time < 0)
             return;
 
@@ -147,7 +198,7 @@ public class BoeBot
     }
     
     /**
-     * Better version of writing a frequency to a pin, for a certain amount of time
+     * Better version of writing a frequency to a pin, for a certain amount of time. The pin has to be in input mode
      * @param pin the BoeBot pin number
      * @param frequency the frequency to write, in Hz
      * @param time the amount of time to write, in milliseconds
@@ -156,6 +207,8 @@ public class BoeBot
     {
 	if(modeMap[pin] != PinMode.Output)
 	    throw new PinException("Trying to write to pin " + pin + " but pin is not set to output");
+	if(pin < 0 || pin > 16)
+	    throw new PinException("Pin value out of range");
         if(frequency < 0 || time < 0)
             return;
         PiGpio.freqOut(pinMap[pin], frequency, time);
@@ -168,6 +221,8 @@ public class BoeBot
      */
     public static int analogRead(int pin)
     {
+	if(pin < 0 || pin > 4)
+	    throw new PinException("Pin value out of range");
 		return PiGpio.analogRead(pin);
     }
 
@@ -188,6 +243,9 @@ public class BoeBot
 	 */
 	public static void rgbSet(int led, int r, int g, int b)
 	{
+		if(led < 0 || led > 6)
+			throw new PinException("Pin value out of range");
+		
 		PiGpio.sendTiny(0x1 | led << 3);
 		PiGpio.sendTiny(r);
 		PiGpio.sendTiny(g);
@@ -201,6 +259,8 @@ public class BoeBot
 	 */
 	public static void rgbSet(int led, Color color)
 	{
+		if(led < 0 || led > 6)
+			throw new PinException("Pin value out of range");
 		rgbSet(led, color.getRed(), color.getGreen(), color.getBlue());
 	}
 
