@@ -491,7 +491,7 @@ typedef enum
 } adsGain_t;
 
 
-inline uint16_t flipWord(uint16_t w)
+uint16_t flipWord(uint16_t w)
 {
     return (w>>8) | ((w&0xff)<<8);
 }
@@ -517,6 +517,7 @@ JNIEXPORT jint JNICALL Java_TI_PiGpio_analogRead  (JNIEnv * env, jclass jc, jint
     i2cWriteWordData(spiHandle, ADS1015_REG_POINTER_CONFIG, flipWord(config));
     gpioDelay(1000);
     int data = i2cReadWordData(spiHandle, ADS1015_REG_POINTER_CONVERT);
+    printf("%i\n", data);
     data = flipWord(data);
     data >>= 4;
     i2cClose(spiHandle);

@@ -28,6 +28,8 @@ public class BoeBot
 			ByteBuffer buffer = ByteBuffer.wrap(data);
 			for(int i = 0; i < dataStore.length; i++)
 				dataStore[i] = buffer.getInt();
+			if(dataStore.length < 1024)
+			    throw new IOException("Error reading datastore file, resetting");
 		
 		} catch(IOException e)
 		{
@@ -45,6 +47,7 @@ public class BoeBot
 			buffer.putInt(d);
 		try {
 			Files.write(Paths.get(dataStoreFile), data);
+			Runtime.getRuntime().exec("sync");
 		} catch(IOException e)
 		{
 			System.out.println("Error storing data store.");
